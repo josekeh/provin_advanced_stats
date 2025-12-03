@@ -28,7 +28,7 @@ def obtener_y_procesar_datos(match_key):
 
     # ⚠️ Manejo de errores de conexión y solicitud
     try:
-        response = requests.get(url, headers=headers, timeout=10) # Agregamos un timeout
+        response = requests.get(url, headers=headers, timeout=60) # Agregamos un timeout
         response.raise_for_status() # Lanza un error para códigos de estado HTTP malos (4xx o 5xx)
     except requests.exceptions.HTTPError as e:
         if response.status_code == 404:
@@ -104,11 +104,16 @@ def obtener_y_procesar_datos(match_key):
     df_equipos = df_final[df_final['NombreCompleto'] == 'Equipo']
     rebotes_totales = sum(df_equipos['ReboteDefensivo'] + df_equipos['ReboteOfensivo'])
     if rebotes_totales > 0:
-        df_final['perc_reb_totales'] = (df_final['ReboteDefensivo'] + df_final['ReboteOfensivo']) / rebotes_totales
+        df_final['perc_reb_totales'] = 100* (df_final['ReboteDefensivo'] + df_final['ReboteOfensivo']) / rebotes_totales
     else:
         df_final['perc_reb_totales'] = 0
 
-    df_final['perc_asistencias'] = df_final['Asistencias'] / df_final['Posesiones'].replace(0, float('nan'))
+    df_final['perc_asistencias'] = 100* df_final['Asistencias'] / df_final['Posesiones'].replace(0, float('nan'))
+    df_final['perc_perdidas'] = 100* df_final['Perdidas'] / df_final['Posesiones'].replace(0, float('nan'))
+    df_final['perc_robos'] = 100* df_final['Recuperaciones'] / df_final['Posesiones'].replace(0, float('nan'))
+    df_final['perc_bloqueos'] = 100* df_final['TaponCometido'] / df_final['Posesiones'].replace(0, float('nan'))
+    df_final['3p_fg'] = 100* df_final['TirosTres.Totales'] / (df_final['TirosDos.Totales'] + df_final['TirosTres.Totales']).replace(0, float('nan'))
+
     
     df_final = df_final.replace([float('inf'), -float('inf')], float('nan'))
     
@@ -123,7 +128,7 @@ def obtener_y_procesar_datos(match_key):
 
 def main():
     st.set_page_config(layout="wide")
-    st.title('🏀 Estadísticas Avanzadas de la Liga Nacional')
+    st.title('🏀 Estadísticas Avanzadas de la Liga Argentina')
     st.markdown('***')
 
     # Campo de entrada para la clave del partido
@@ -174,14 +179,21 @@ def main():
             if not df_team_summary.empty:
                 st.header(f"Resumen de Eficiencia del Club ID: {selected_club_id}")
                 
-                summary_cols = ['Puntos', 'PuntosRecibidos', 'Posesiones', 'EficienciaOfensiva', 'EficienciaDefensiva', 'Net Rating']
+                summary_cols = ['Puntos', 'PuntosRecibidos', 'Posesiones', 'EficienciaOfensiva', 'EficienciaDefensiva', 'Net Rating', 'perc_reb_totales', 'perc_asistencias',
+                                'perc_perdidas', 'perc_robos', 'perc_bloqueos', '3p_fg']
                 summary_df_display = df_team_summary[summary_cols].transpose()
                 
                 summary_df_display.index = [
                     'Puntos Anotados', 'Puntos Recibidos', 'Posesiones Estimadas', 
                     'Eficiencia Ofensiva (Puntos/100 Pos)', 
                     'Eficiencia Defensiva (Ptos Recibidos/100 Pos)', 
-                    'Net Rating (EO - ED)'
+                    'Net Rating (EO - ED)',
+                    '% Rebotes Totales del Equipo',
+                    '% Asistencias del Equipo',
+                    '% Pérdidas del Equipo',
+                    '% Robos del Equipo',   
+                    '% Bloqueos Cometidos del Equipo',
+                    '% 3P FG'
                 ]
                 
                 summary_df_display.columns = ['Valor']
